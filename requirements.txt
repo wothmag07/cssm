@@ -1,6 +1,6 @@
 langchain_astradb
 pandas
-langchain_google_genai
+langchain-google-genai
 fastapi 
 uvicorn 
 python-multipart
@@ -8,10 +8,10 @@ jinja2
 python-dotenv 
 langchain 
 langchain_core 
-langchain_groq
-langchain_openai
-langchain_anthropic
-langchain_ollama
+langchain-groq
+langchain-openai
+langchain-anthropic
+langchain-ollama
 datasets
 
 -e .

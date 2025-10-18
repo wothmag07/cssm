@@ -1,5 +1,9 @@
+data:
+  json_path: "data/merged_electronics_data.json"
+  jsonl_path: "data/merged_electronics_data.jsonl"
+
 astradb:
-  collection_name: "e-commerce_chatbot"
+  collection_name: "cssm"
 
 embedding_model:
   provider: "google"
@@ -11,6 +15,17 @@ llm_model:
 
 retriever:
   top_k: 3
+  top_p: 0.95
+
+ingestion:
+  batch_size: 64
+  max_retries: 6
+  backoff_initial_seconds: 1.0
+  chunk_size: 1200
+  chunk_overlap: 150
+  include_product_description_for_embedding: true
+  limit: 100000
+  shuffle: false
 
 
 
