@@ -1,14 +1,14 @@
 import os
 from typing import List, Dict, Any
 import logging
-from utils.modelloader import ModelLoader
-from langchain_astradb import AstradbVectorStore
+from utils.model_loader import ModelLoader
+from langchain_astradb import AstraDBVectorStore
 from langchain_core.documents import Document
-from configloader import load_config
+from config.config_loader import load_config
 from dotenv import load_dotenv
 
 
-class Retrieval:
+class Retriever:
     def __init__(self):
         self.config = load_config()
         self.model_loader = ModelLoader()
@@ -38,3 +38,52 @@ class Retrieval:
         self.groq_api_key = os.environ["GROQ_API_KEY"]
         self.openai_api_key = os.environ["OPENAI_API_KEY"]
         self.anthropic_api_key = os.environ["ANTHROPIC_API_KEY"]
+
+    def load_retriever(self):
+        """Load the retriever"""
+
+        if not self.vector_store:
+            collection_name = self.config["astradb"]["collection_name"]
+
+            self.vector_store = AstraDBVectorStore(
+                api_endpoint=self.astradb_api_endpoint,
+                token=self.astradb_application_token,
+                namespace=self.astradb_keyspace,
+                embedding=self.model_loader.load_embeddings(),
+                collection_name=collection_name,
+            )
+            logging.info(f"Loaded vector store for collection {collection_name}")
+
+        if not self.retriever:
+            logging.info("Loading retriever")
+            top_k = (
+                self.config["retriever"]["top_k"] if "retriever" in self.config else 3
+            )
+            self.retriever = self.vector_store.as_retriever(search_kwargs={"k": top_k})
+            logging.info(f"Loaded retriever with top_k {top_k}")
+
+        return self.retriever
+
+    def retrieve(self, query: str):
+        """Retrieve the documents"""
+        logging.info(f"Retrieving documents for query: {query}")
+        retriever = self.load_retriever()
+        output = retriever.invoke(query)
+        logging.info(f"Output: {output}")
+        return output
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="% (asctime)s | %(levelname)s | %(name)s | %(message)s".replace(" ", ""),
+    )
+    retriever = Retriever()
+    query = "Can you suggest good budget laptops?"
+    results = retriever.retrieve(query)
+    logging.info(f"Results: {results}")
+    for idx, result in enumerate(results, start=1):
+        logging.info(
+            f"Result {idx}: {result.page_content} \n Metadata: {result.metadata}"
+        )
+        logging.info("-" * 80)
