@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon Product Assistant - Electronics</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='style.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+    <!-- Amazon Header -->
+    <header class="amazon-header">
+        <div class="container-fluid">
+            <div class="row align-items-center py-2">
+            <div class="col-md-2">
+                <div class="amazon-logo">
+                    <div class="chatbot-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <span class="logo-text">Product Assistant</span>
+                </div>
+            </div>
+                <div class="col-md-8">
+                    <div class="header-text">
+                        <i class="fas fa-microphone-alt"></i>
+                        <span>Product Assistant</span>
+                    </div>
+                </div>
+                <div class="col-md-2 text-end">
+                    <span class="badge bg-success">Live</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Chat Container -->
+    <div class="container-fluid main-container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10 col-xl-8">
+                <div class="amazon-chat-card">
+                    <!-- Welcome Banner -->
+                    <div class="welcome-banner">
+                        <div class="alexa-icon">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <h3>Welcome to Amazon Product Assistant</h3>
+                        <p>Ask me about electronics products, compare features, read reviews, and get personalized recommendations!</p>
+                    </div>
+
+                    <!-- Chat Messages -->
+                    <div id="messageContainer" class="chat-messages">
+                        <!-- Messages will be inserted here -->
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="chat-input-container">
+                        <form id="messageForm" class="chat-input-form">
+                            <div class="input-group">
+                                <input type="text" id="userMessage" name="msg" 
+                                       placeholder="Ask about products... (e.g., 'Best budget laptops for students')" 
+                                       autocomplete="off" class="form-control chat-input" required>
+                                <button type="submit" id="sendBtn" class="btn amazon-btn">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    $(document).ready(function() {
+        // Add welcome message
+        addWelcomeMessage();
+
+        $("#messageForm").on("submit", function(event) {
+            event.preventDefault();
+            
+            const userMessage = $("#userMessage").val().trim();
+            if (!userMessage) return;
+
+            const timestamp = getCurrentTime();
+            
+            // Add user message
+            addUserMessage(userMessage, timestamp);
+            
+            // Clear input
+            $("#userMessage").val("");
+            
+            // Show typing indicator
+            const typingId = addTypingIndicator();
+            
+            // Send to backend
+            $.ajax({
+                data: { msg: userMessage },
+                type: "POST",
+                url: "/retrieve",
+                success: function(response) {
+                    removeTypingIndicator(typingId);
+                    displayBotResponse(response, timestamp);
+                },
+                error: function(xhr, status, error) {
+                    removeTypingIndicator(typingId);
+                    addBotMessage("Sorry, I encountered an error. Please try again.", timestamp, true);
+                }
+            });
+        });
+
+        // Auto-scroll to bottom
+        function scrollToBottom() {
+            const container = $("#messageContainer");
+            container.scrollTop(container[0].scrollHeight);
+        }
+
+        // Get current time
+        function getCurrentTime() {
+            const date = new Date();
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Add welcome message
+        function addWelcomeMessage() {
+            const welcomeHtml = `
+                <div class="message bot-message">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-text">
+                            Hi! I'm your Amazon Product Assistant. I can help you find the best electronics products based on real customer reviews and ratings. What are you looking for today?
+                        </div>
+                        <div class="message-time">${getCurrentTime()}</div>
+                    </div>
+                </div>`;
+            $("#messageContainer").append(welcomeHtml);
+            scrollToBottom();
+        }
+
+        // Add user message
+        function addUserMessage(message, timestamp) {
+            const userHtml = `
+                <div class="message user-message">
+                    <div class="message-content">
+                        <div class="message-text">${escapeHtml(message)}</div>
+                        <div class="message-time">${timestamp}</div>
+                    </div>
+                    <div class="message-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>`;
+            $("#messageContainer").append(userHtml);
+            scrollToBottom();
+        }
+
+        // Add typing indicator
+        function addTypingIndicator() {
+            const typingId = 'typing-' + Date.now();
+            const typingHtml = `
+                <div class="message bot-message" id="${typingId}">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="typing-indicator">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                </div>`;
+            $("#messageContainer").append(typingHtml);
+            scrollToBottom();
+            return typingId;
+        }
+
+        // Remove typing indicator
+        function removeTypingIndicator(typingId) {
+            $("#" + typingId).remove();
+        }
+
+        // Display bot response
+        function displayBotResponse(response, timestamp) {
+            if (response.response) {
+                // Display the LLM's text response
+                addBotMessage(response.response, timestamp, false);
+            } else {
+                addBotMessage("I couldn't process your request. Please try again.", timestamp, true);
+            }
+            scrollToBottom();
+        }
+
+        // Create product card
+        function createProductCard(content, metadata, isFirst) {
+            const productName = metadata.product_name || 'Product';
+            const rating = metadata.product_rating || 0;
+            const category = metadata.product_category || 'Electronics';
+            const productId = metadata.product_id || '';
+            
+            const stars = generateStars(rating);
+            
+            return `
+                <div class="product-card">
+                    <div class="product-header">
+                        <h5 class="product-name">${escapeHtml(productName)}</h5>
+                        <div class="product-rating">
+                            ${stars}
+                            <span class="rating-value">${rating.toFixed(1)}</span>
+                        </div>
+                    </div>
+                    <div class="product-category">
+                        <i class="fas fa-tag"></i> ${escapeHtml(category)}
+                    </div>
+                    <div class="product-review">
+                        <i class="fas fa-quote-left"></i>
+                        ${escapeHtml(content.substring(0, 200))}${content.length > 200 ? '...' : ''}
+                    </div>
+                    <div class="product-footer">
+                        <span class="product-id">ASIN: ${escapeHtml(productId)}</span>
+                    </div>
+                </div>`;
+        }
+
+        // Generate star rating HTML
+        function generateStars(rating) {
+            let stars = '';
+            const fullStars = Math.floor(rating);
+            const hasHalfStar = rating % 1 >= 0.5;
+            
+            for (let i = 0; i < fullStars; i++) {
+                stars += '<i class="fas fa-star"></i>';
+            }
+            if (hasHalfStar) {
+                stars += '<i class="fas fa-star-half-alt"></i>';
+            }
+            const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+            for (let i = 0; i < emptyStars; i++) {
+                stars += '<i class="far fa-star"></i>';
+            }
+            return stars;
+        }
+
+        // Add bot message
+        function addBotMessage(content, timestamp, isError = false, isFirst = false) {
+            const errorClass = isError ? 'error-message' : '';
+            // Clean markdown formatting
+            let cleanedContent = content
+                .replace(/\*\*(.*?)\*\*/g, '$1')  // Remove **bold**
+                .replace(/\*(.*?)\*/g, '$1')      // Remove *italic*
+                .replace(/\n/g, '<br>');          // Convert newlines to <br>
+            const botHtml = `
+                <div class="message bot-message ${errorClass}">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-text">${cleanedContent}</div>
+                        <div class="message-time">${timestamp}</div>
+                    </div>
+                </div>`;
+            $("#messageContainer").append(botHtml);
+            scrollToBottom();
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+    });
+    </script>
+
+</body>
+</html>

@@ -13,5 +13,6 @@ langchain-openai
 langchain-anthropic
 langchain-ollama
 datasets
+pyyaml
 
 -e .

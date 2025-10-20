@@ -1,10 +1,8 @@
 import logging
 from langchain_core.runnables import RunnablePassthrough
 import uvicorn
-from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, Form
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from retriever.retrieval import Retriever
@@ -15,22 +13,19 @@ from langchain.prompts import ChatPromptTemplate
 
 load_dotenv()
 
-app = FastAPI()
+app = FastAPI(title="Amazon Product Assistant API", version="1.0.0")
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-templates = Jinja2Templates(directory="templates")
-
-
+# CORS middleware for Next.js frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+    ],  # Next.js default ports
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-load_dotenv()
 
 retriever_obj = Retriever()
 model = ModelLoader()
@@ -55,14 +50,15 @@ def invoke_chain(query: str):
     return output
 
 
-@app.get("/", response_class=HTMLResponse)
-async def get_index(request: Request):
-    """Get the index page"""
-    return templates.TemplateResponse("chat.html", {"request": request})
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "service": "Amazon Product Assistant API"}
 
 
-@app.post("/retrieve", response_class=JSONResponse)
+@app.post("/retrieve")
 async def chat(msg: str = Form(...)):
+    """Chat endpoint for product queries"""
     try:
         result = invoke_chain(msg)
         logging.info(f"Response: {result}")
@@ -74,5 +70,5 @@ async def chat(msg: str = Form(...)):
 
 
 if __name__ == "__main__":
-    logging.info("Starting server at http://0.0.0.0:8000")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    logging.info("Starting API server at http://0.0.0.0:8001")
+    uvicorn.run(app, host="0.0.0.0", port=8001)

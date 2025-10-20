@@ -1,0 +1,475 @@
+/* Amazon Product Assistant Styles */
+
+/* Global Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body, html {
+    height: 100%;
+    font-family: 'Amazon Ember', 'Helvetica Neue', Arial, sans-serif;
+    background: #f8f9fa;
+}
+
+/* Amazon Header */
+.amazon-header {
+    background: linear-gradient(180deg, #131921 0%, #232f3e 100%);
+    color: white;
+    padding: 12px 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.amazon-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.chatbot-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #ff9900 0%, #ff6b00 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(255, 153, 0, 0.3);
+}
+
+.chatbot-icon i {
+    color: white;
+    font-size: 22px;
+}
+
+.logo-text {
+    color: white;
+    font-size: 24px;
+    letter-spacing: -1px;
+}
+
+.header-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.header-text i {
+    color: #ff9900;
+    font-size: 20px;
+}
+
+/* Main Container */
+.main-container {
+    padding: 30px 15px;
+    min-height: calc(100vh - 70px);
+}
+
+/* Chat Card */
+.amazon-chat-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    height: calc(100vh - 140px);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Welcome Banner */
+.welcome-banner {
+    background: linear-gradient(135deg, #ff9900 0%, #ff6b00 100%);
+    color: white;
+    padding: 30px;
+    text-align: center;
+}
+
+.alexa-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.welcome-banner h3 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.welcome-banner p {
+    font-size: 14px;
+    opacity: 0.95;
+}
+
+/* Chat Messages */
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background: #f9f9f9;
+}
+
+.chat-messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Messages */
+.message {
+    display: flex;
+    margin-bottom: 20px;
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.bot-message .message-avatar {
+    background: #ff9900;
+    color: white;
+}
+
+.user-message .message-avatar {
+    background: #e8e8e8;
+    color: #333;
+}
+
+.message-content {
+    flex: 1;
+    margin: 0 12px;
+}
+
+.message-text {
+    background: white;
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    line-height: 1.5;
+    color: #333;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.user-message .message-text {
+    background: #ff9900;
+    color: white;
+}
+
+.error-message .message-text {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    color: #856404;
+}
+
+.message-time {
+    font-size: 11px;
+    color: #888;
+    margin-top: 5px;
+    padding-left: 4px;
+}
+
+/* Typing Indicator */
+.typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 12px 16px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    background: #999;
+    border-radius: 50%;
+    animation: typing 1.4s infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0%, 60%, 100% {
+        transform: translateY(0);
+    }
+    30% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Product Card */
+.product-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.product-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.product-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.product-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #0066c0;
+    margin: 0;
+    flex: 1;
+    padding-right: 10px;
+}
+
+.product-name:hover {
+    color: #ff9900;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.product-rating {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+}
+
+.product-rating i {
+    color: #ff9900;
+    font-size: 14px;
+}
+
+.rating-value {
+    color: #0066c0;
+    font-weight: 600;
+}
+
+.product-category {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.product-category i {
+    color: #ff9900;
+    margin-right: 5px;
+}
+
+.product-review {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #333;
+    margin-bottom: 12px;
+    font-style: italic;
+}
+
+.product-review i {
+    color: #999;
+    margin-right: 5px;
+}
+
+.product-footer {
+    border-top: 1px solid #e0e0e0;
+    padding-top: 10px;
+}
+
+.product-id {
+    font-size: 11px;
+    color: #999;
+}
+
+/* Chat Input */
+.chat-input-container {
+    background: white;
+    border-top: 1px solid #e0e0e0;
+    padding: 15px 20px;
+}
+
+.chat-input-form .input-group {
+    display: flex;
+    gap: 0;
+}
+
+.chat-input {
+    border: 2px solid #e0e0e0;
+    border-radius: 24px 0 0 24px;
+    padding: 12px 20px;
+    font-size: 14px;
+    height: 48px;
+}
+
+.chat-input:focus {
+    border-color: #ff9900;
+    box-shadow: 0 0 0 3px rgba(255, 153, 0, 0.1);
+    outline: none;
+}
+
+.amazon-btn {
+    background: linear-gradient(135deg, #ff9900 0%, #ff6b00 100%);
+    color: white;
+    border: none;
+    border-radius: 0 24px 24px 0;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    height: 48px;
+    transition: all 0.3s ease;
+}
+
+.amazon-btn:hover {
+    background: linear-gradient(135deg, #ff6b00 0%, #ff9900 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 153, 0, 0.3);
+}
+
+.amazon-btn:active {
+    transform: translateY(0);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .amazon-header {
+        padding: 10px 0;
+    }
+
+    .amazon-logo {
+        font-size: 20px;
+    }
+
+    .header-text {
+        font-size: 14px;
+    }
+
+    .welcome-banner {
+        padding: 20px 15px;
+    }
+
+    .welcome-banner h3 {
+        font-size: 20px;
+    }
+
+    .welcome-banner p {
+        font-size: 13px;
+    }
+
+    .main-container {
+        padding: 15px 10px;
+    }
+
+    .amazon-chat-card {
+        height: calc(100vh - 100px);
+    }
+
+    .product-header {
+        flex-direction: column;
+    }
+
+    .product-name {
+        margin-bottom: 8px;
+    }
+}
+
+@media (max-width: 576px) {
+    .amazon-logo {
+        font-size: 18px;
+    }
+
+    .chatbot-icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .chatbot-icon i {
+        font-size: 18px;
+    }
+
+    .logo-text {
+        font-size: 18px;
+    }
+
+    .header-text span {
+        display: none;
+    }
+
+    .chat-messages {
+        padding: 15px;
+    }
+
+    .message-content {
+        margin: 0 8px;
+    }
+
+    .message-text {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+
+    .product-card {
+        padding: 12px;
+    }
+
+    .product-name {
+        font-size: 14px;
+    }
+
+    .chat-input {
+        font-size: 13px;
+        padding: 10px 15px;
+    }
+
+    .amazon-btn {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+}

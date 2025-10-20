@@ -1,4 +1,22 @@
 env/
 .env
 venv/
+.venv/
 e_commerce_backend.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist/
+build/
+.venv/
+rag-chat/node_modules
+rag-chat/.next
+
+# Data files (large, should not be committed)
+data/*.jsonl
+data/*.json
