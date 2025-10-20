@@ -1,9 +1,7 @@
 import os
-from typing import List, Dict, Any
 import logging
 from utils.model_loader import ModelLoader
 from langchain_astradb import AstraDBVectorStore
-from langchain_core.documents import Document
 from config.config_loader import load_config
 from dotenv import load_dotenv
 
