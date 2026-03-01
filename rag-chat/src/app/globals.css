@@ -1,28 +1,50 @@
 @import "tailwindcss";
 
-/* Custom scrollbar */
+/* ── ArcPrize-inspired dark theme ── */
+
+:root {
+  --bg-primary: #0a0a0a;
+  --bg-surface: #141414;
+  --bg-input: #111111;
+  --border-subtle: #1e1e1e;
+  --border-default: #222222;
+  --text-primary: #e8e8e8;
+  --text-secondary: #888888;
+  --text-muted: #555555;
+  --accent: #00d4aa;
+  --accent-hover: #00eabb;
+  --accent-glow: rgba(0, 212, 170, 0.15);
+  --user-bubble-text: #0a0a0a;
+}
+
+html, body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* ── Scrollbar ── */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
+  background: #2a2a2a;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #3a3a3a;
 }
 
-/* Smooth animations */
-@keyframes fadeIn {
+/* ── Animations ── */
+@keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -30,6 +52,40 @@
   }
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-in;
+@keyframes dotPulse {
+  0%, 80%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes subtleGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(0, 212, 170, 0);
+  }
+  50% {
+    box-shadow: 0 0 12px 2px rgba(0, 212, 170, 0.12);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.dot-pulse {
+  animation: dotPulse 1.4s ease-in-out infinite;
+}
+
+.glow-pulse {
+  animation: subtleGlow 2s ease-in-out infinite;
+}
+
+/* ── Selection ── */
+::selection {
+  background: rgba(0, 212, 170, 0.25);
+  color: #fff;
 }

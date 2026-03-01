@@ -1,21 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
 });
 
 export const metadata: Metadata = {
-  title: "Amazon Product Assistant",
-  description: "AI-powered product assistant that helps you find the best electronics based on real customer reviews and ratings. Get personalized recommendations for laptops, phones, cameras, and more.",
-  keywords: "Amazon, electronics, product recommendations, customer reviews, AI assistant, laptops, smartphones, cameras, shopping assistant",
+  title: "CSSM — Product Assistant",
+  description:
+    "AI-powered product assistant that helps you find the best electronics based on real customer reviews and ratings.",
 };
 
 export default function RootLayout({
@@ -25,9 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${inter.variable} font-[family-name:var(--font-inter)] antialiased`}>
         {children}
       </body>
     </html>
