@@ -1,86 +1,73 @@
-from config.config_loader import load_config
 import os
-from dotenv import load_dotenv
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_groq import ChatGroq
-from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
-from langchain_openai import OpenAIEmbeddings
-
 import logging
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from config.config_loader import load_config
+
+load_dotenv()
 
 
 class ModelLoader:
-    """
-    Utility class to load the LLM models and embeddings
-    """
+    """Load LLM and embedding models based on config."""
 
     def __init__(self):
-        load_dotenv()
         self.config = load_config()
-        self.validate_env()
+        self._validate_env()
 
-    def validate_env(self):
-        """
-        Validate the environment variables
-        """
-        required_env_variables = [
-            "GOOGLE_API_KEY",
-            "GROQ_API_KEY",
-            "OPENAI_API_KEY",
-            "ANTHROPIC_API_KEY",
-        ]
-        self.groq_api_key = os.environ["GROQ_API_KEY"]
-        self.google_api_key = os.environ["GOOGLE_API_KEY"]
-        self.openai_api_key = os.environ["OPENAI_API_KEY"]
-        self.anthropic_api_key = os.environ["ANTHROPIC_API_KEY"]
+    def _validate_env(self):
+        provider = self.config["llm_model"]["provider"]
+        key_map = {
+            "openai": "OPENAI_API_KEY",
+            "groq": "GROQ_API_KEY",
+            "google": "GOOGLE_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+        }
+        required_key = key_map.get(provider)
+        if required_key and required_key not in os.environ:
+            raise ValueError(
+                f"Missing {required_key} for provider '{provider}'. Set it in .env"
+            )
 
-        missing_env_variables = [
-            var for var in required_env_variables if var not in os.environ
-        ]
-        if missing_env_variables:
-            raise ValueError(f"Missing environment variables: {missing_env_variables}")
+        embed_provider = self.config["embedding_model"]["provider"]
+        embed_key = key_map.get(embed_provider)
+        if embed_key and embed_key not in os.environ:
+            raise ValueError(
+                f"Missing {embed_key} for embedding provider '{embed_provider}'. Set it in .env"
+            )
 
     def load_embeddings(self):
-        """
-        Load the embedding model
-        """
-        logging.info(
-            f"Loading embedding model: {self.config['embedding_model']['model']}"
-        )
-        model_name = self.config["embedding_model"]["model"]
-        if self.config["embedding_model"]["provider"] == "google":
-            return GoogleGenerativeAIEmbeddings(
-                api_key=self.google_api_key, model=model_name
-            )
-        elif self.config["embedding_model"]["provider"] == "openai":
-            return OpenAIEmbeddings(api_key=self.openai_api_key, model=model_name)
-        # elif self.config["embedding_model"]["provider"] == "ollama":
-        #     return OllamaEmbeddings(api_key=self.ollama_api_key, model=model_name)
-        else:
-            raise ValueError(
-                f"Invalid embedding provider: {self.config['embedding_model']['provider']}"
-            )
+        provider = self.config["embedding_model"]["provider"]
+        model = self.config["embedding_model"]["model"]
+        logging.info(f"Loading embeddings: {provider}/{model}")
+
+        if provider == "openai":
+            return OpenAIEmbeddings(model=model)
+
+        # Optional providers — import only if needed
+        if provider == "google":
+            from langchain_google_genai import GoogleGenerativeAIEmbeddings
+            return GoogleGenerativeAIEmbeddings(model=model)
+
+        raise ValueError(f"Unsupported embedding provider: {provider}")
 
     def load_llm(self):
-        """
-        Load the LLM model
-        """
-        logging.info(f"Loading LLM model: {self.config['llm_model']['model']}")
-        model_name = self.config["llm_model"]["model"]
-        if self.config["llm_model"]["provider"] == "google":
-            return ChatGoogleGenerativeAI(api_key=self.google_api_key, model=model_name)
-        elif self.config["llm_model"]["provider"] == "groq":
-            return ChatGroq(api_key=self.groq_api_key, model=model_name)
-        elif self.config["llm_model"]["provider"] == "openai":
-            return ChatOpenAI(api_key=self.openai_api_key, model=model_name)
-        elif self.config["llm_model"]["provider"] == "anthropic":
-            return ChatAnthropic(api_key=self.anthropic_api_key, model=model_name)
-        # elif self.config["llm_model"]["provider"] == "ollama":
-        #     return Ollama(api_key=self.ollama_api_key, model=model_name)
+        provider = self.config["llm_model"]["provider"]
+        model = self.config["llm_model"]["model"]
+        temperature = self.config["llm_model"].get("temperature", 0.2)
+        logging.info(f"Loading LLM: {provider}/{model} (temp={temperature})")
 
-        else:
-            raise ValueError(
-                f"Invalid LLM provider: {self.config['llm_model']['provider']}"
-            )
+        if provider == "openai":
+            return ChatOpenAI(model=model, temperature=temperature)
+
+        # Optional providers — import only if needed
+        if provider == "groq":
+            from langchain_groq import ChatGroq
+            return ChatGroq(model=model, temperature=temperature)
+        if provider == "google":
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            return ChatGoogleGenerativeAI(model=model, temperature=temperature)
+        if provider == "anthropic":
+            from langchain_anthropic import ChatAnthropic
+            return ChatAnthropic(model=model, temperature=temperature)
+
+        raise ValueError(f"Unsupported LLM provider: {provider}")

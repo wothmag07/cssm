@@ -1,0 +1,38 @@
+[project]
+name = "cssm"
+version = "2.0.0"
+description = "Customer Support System Management — RAG-based product assistant"
+authors = [{ name = "Gowtham Arulmozhi", email = "gowtham.arulmozhi@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = [
+    # Core
+    "fastapi",
+    "uvicorn",
+    "python-multipart",
+    "python-dotenv",
+    "pyyaml",
+    # LangChain + LangGraph
+    "langchain",
+    "langchain-core",
+    "langchain-openai",
+    "langchain-community",
+    "langgraph",
+    # Supabase
+    "supabase",
+    # Data processing
+    "pandas",
+    "tiktoken",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+google = ["langchain-google-genai"]
+groq = ["langchain-groq"]
+anthropic = ["langchain-anthropic"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["config", "retriever", "utils", "prompts", "graph", "data-ingestion"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

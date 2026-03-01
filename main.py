@@ -1,74 +1,112 @@
 import logging
-from langchain_core.runnables import RunnablePassthrough
+import os
+from contextlib import asynccontextmanager
+
 import uvicorn
-from fastapi import FastAPI, Form
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from fastapi import FastAPI, Form
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from config.config_loader import load_config
+from graph.rag_graph import build_graph
 from retriever.retrieval import Retriever
 from utils.model_loader import ModelLoader
-from prompts.prompt import PROMPT_TEMPLATES
-from langchain_core.output_parsers import StrOutputParser
-from langchain.prompts import ChatPromptTemplate
 
-load_dotenv()
+load_dotenv(override=True)
 
-app = FastAPI(title="Amazon Product Assistant API", version="1.0.0")
+# ── Globals (initialized once at startup) ──
+rag_graph = None
+config = load_config()
 
-# CORS middleware for Next.js frontend
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Build the LangGraph pipeline once at startup."""
+    global rag_graph
+    logging.info("Building RAG graph...")
+    retriever = Retriever()
+    model_loader = ModelLoader()
+    max_retries = config.get("graph", {}).get("max_retries", 2)
+    rag_graph = build_graph(retriever, model_loader, max_retries=max_retries)
+    logging.info("RAG graph ready")
+    yield
+    logging.info("Shutting down")
+
+
+app = FastAPI(
+    title="CSSM — Product Assistant API",
+    version="2.0.0",
+    lifespan=lifespan,
+)
+
+# CORS
+allowed_origins = os.environ.get(
+    "CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://10.0.0.52:3000"
+).split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-    ],  # Next.js default ports
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-retriever_obj = Retriever()
-model = ModelLoader()
-
-
-def invoke_chain(query: str):
-    retriever = retriever_obj.load_retriever()
-    prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATES["product_bot"])
-    llm = model.load_llm()
-    output_parser = StrOutputParser()
-
-    # Create the RAG chain properly
-    chain = (
-        {"context": retriever, "question": RunnablePassthrough()}
-        | prompt
-        | llm
-        | output_parser
-    )
-
-    output = chain.invoke(query)
-
-    return output
-
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "Amazon Product Assistant API"}
+    return {"status": "healthy", "service": "CSSM Product Assistant API", "version": "2.0.0"}
 
 
 @app.post("/retrieve")
 async def chat(msg: str = Form(...)):
-    """Chat endpoint for product queries"""
+    """Chat endpoint — runs the LangGraph RAG pipeline."""
+    query = msg.strip()
+
+    # Input validation
+    if not query:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Query cannot be empty."},
+        )
+    if len(query) > 1000:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Query too long. Maximum 1000 characters."},
+        )
+
     try:
-        result = invoke_chain(msg)
-        logging.info(f"Response: {result}")
-        return JSONResponse(content={"response": result})
+        result = rag_graph.invoke({
+            "question": query,
+            "rewritten_query": "",
+            "documents": [],
+            "sources": [],
+            "grade": "",
+            "answer": "",
+            "retries": 0,
+        })
+
+        logging.info(f"Query: {query[:80]} | Answer length: {len(result.get('answer', ''))}")
+
+        return JSONResponse(content={
+            "response": result.get("answer", ""),
+            "sources": result.get("sources", []),
+        })
+
     except Exception as e:
         logging.error(f"Error in chat endpoint: {e}", exc_info=True)
-        error_msg = "Sorry, I'm having trouble accessing the database right now. Please try again in a moment."
-        return JSONResponse(content={"error": error_msg})
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Sorry, I'm having trouble processing your request. Please try again.",
+            },
+        )
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(message)s",
+    )
     logging.info("Starting API server at http://0.0.0.0:8001")
     uvicorn.run(app, host="0.0.0.0", port=8001)

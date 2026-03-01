@@ -1,18 +1,28 @@
-langchain_astradb
-pandas
-langchain-google-genai
-fastapi 
-uvicorn 
+## Core
+fastapi
+uvicorn
 python-multipart
-jinja2
-python-dotenv 
-langchain 
-langchain_core 
-langchain-groq
-langchain-openai
-langchain-anthropic
-langchain-ollama
-datasets
+python-dotenv
 pyyaml
+
+## LangChain + LangGraph
+langchain
+langchain_core
+langchain-openai
+langchain-community
+langgraph
+
+## Supabase
+supabase
+
+## Data processing
+pandas
+tiktoken
+tqdm
+
+## Optional LLM providers (uncomment if needed)
+# langchain-google-genai
+# langchain-groq
+# langchain-anthropic
 
 -e .

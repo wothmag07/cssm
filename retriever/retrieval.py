@@ -1,87 +1,83 @@
 import os
 import logging
-from utils.model_loader import ModelLoader
-from langchain_astradb import AstraDBVectorStore
-from config.config_loader import load_config
+
 from dotenv import load_dotenv
+from langchain_core.documents import Document
+from openai import OpenAI
+from supabase import create_client
+
+from config.config_loader import load_config
+
+load_dotenv(override=True)
 
 
 class Retriever:
     def __init__(self):
         self.config = load_config()
-        self.model_loader = ModelLoader()
-        self.vector_store = None
-        self._load_env_variables()
-        self.retriever = None
+        self._client = None
+        self._openai = None
+        self.embed_model = self.config["embedding_model"]["model"]
+        self.table = self.config["supabase"]["table_name"]
+        self.query_name = self.config["supabase"]["query_name"]
+        self.top_k = self.config["retriever"].get("top_k", 8)
 
-    def _load_env_variables(self):
-        """Load the environment variables"""
-        load_dotenv()
-        required_env_variables = [
-            "ASTRADB_API_ENDPOINT",
-            "ASTRADB_APPLICATION_TOKEN",
-            "ASTRADB_KEYSPACE",
-            "GOOGLE_API_KEY",
-            "GROQ_API_KEY",
-            "OPENAI_API_KEY",
-            "ANTHROPIC_API_KEY",
-        ]
-        for variable in required_env_variables:
-            if variable not in os.environ:
-                raise ValueError(f"Environment variable {variable} is missing")
-        self.astradb_api_endpoint = os.environ["ASTRADB_API_ENDPOINT"]
-        self.astradb_application_token = os.environ["ASTRADB_APPLICATION_TOKEN"]
-        self.astradb_keyspace = os.environ["ASTRADB_KEYSPACE"]
-        self.google_api_key = os.environ["GOOGLE_API_KEY"]
-        self.groq_api_key = os.environ["GROQ_API_KEY"]
-        self.openai_api_key = os.environ["OPENAI_API_KEY"]
-        self.anthropic_api_key = os.environ["ANTHROPIC_API_KEY"]
-
-    def load_retriever(self):
-        """Load the retriever"""
-
-        if not self.vector_store:
-            collection_name = self.config["astradb"]["collection_name"]
-
-            self.vector_store = AstraDBVectorStore(
-                api_endpoint=self.astradb_api_endpoint,
-                token=self.astradb_application_token,
-                namespace=self.astradb_keyspace,
-                embedding=self.model_loader.load_embeddings(),
-                collection_name=collection_name,
+    @property
+    def client(self):
+        if self._client is None:
+            self._client = create_client(
+                os.environ["SUPABASE_URL"],
+                os.environ["SUPABASE_SERVICE_ROLE_KEY"],
             )
-            logging.info(f"Loaded vector store for collection {collection_name}")
+            logging.info("Connected to Supabase")
+        return self._client
 
-        if not self.retriever:
-            logging.info("Loading retriever")
-            top_k = (
-                self.config["retriever"]["top_k"] if "retriever" in self.config else 3
-            )
-            self.retriever = self.vector_store.as_retriever(search_kwargs={"k": top_k})
-            logging.info(f"Loaded retriever with top_k {top_k}")
+    @property
+    def openai(self):
+        if self._openai is None:
+            self._openai = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+        return self._openai
 
-        return self.retriever
+    def _embed_query(self, query: str) -> list:
+        """Embed a query using OpenAI."""
+        resp = self.openai.embeddings.create(model=self.embed_model, input=query)
+        return resp.data[0].embedding
 
     def retrieve(self, query: str):
-        """Retrieve the documents"""
-        logging.info(f"Retrieving documents for query: {query}")
-        retriever = self.load_retriever()
-        output = retriever.invoke(query)
-        logging.info(f"Output: {output}")
-        return output
+        """Retrieve documents with similarity scores via Supabase RPC."""
+        embedding = self._embed_query(query)
+
+        # Call the match_documents RPC function directly
+        result = self.client.rpc(
+            self.query_name,
+            {
+                "query_embedding": embedding,
+                "match_count": self.top_k,
+                "filter": {},
+            },
+        ).execute()
+
+        docs_with_scores = []
+        for row in result.data or []:
+            doc = Document(
+                page_content=row["content"],
+                metadata=row.get("metadata", {}),
+            )
+            score = row.get("similarity", 0.0)
+            docs_with_scores.append((doc, score))
+
+        logging.info(f"Retrieved {len(docs_with_scores)} docs for: {query[:80]}")
+        return docs_with_scores
 
 
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
-        format="% (asctime)s | %(levelname)s | %(name)s | %(message)s".replace(" ", ""),
+        format="%(asctime)s | %(levelname)s | %(message)s",
     )
     retriever = Retriever()
     query = "Can you suggest good budget laptops?"
     results = retriever.retrieve(query)
-    logging.info(f"Results: {results}")
-    for idx, result in enumerate(results, start=1):
-        logging.info(
-            f"Result {idx}: {result.page_content} \n Metadata: {result.metadata}"
-        )
+    for idx, (doc, score) in enumerate(results, start=1):
+        logging.info(f"[{idx}] sim={score:.3f} | {doc.page_content[:120]}")
+        logging.info(f"     metadata={doc.metadata}")
         logging.info("-" * 80)

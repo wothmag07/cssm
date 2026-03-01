@@ -1,32 +1,31 @@
 data:
-  json_path: "data/merged_electronics_data.json"
   jsonl_path: "data/merged_electronics_data.jsonl"
 
-astradb:
-  collection_name: "cssm"
+supabase:
+  table_name: "chunks"
+  query_name: "match_documents"
 
 embedding_model:
-  provider: "google"
-  model: "text-embedding-004"
+  provider: "openai"
+  model: "text-embedding-3-small"
+  dimensions: 1536
 
 llm_model:
-  provider: "google"
-  model: "gemini-2.5-pro"
+  provider: "openai"
+  model: "gpt-4o-mini"
+  temperature: 0.2
 
 retriever:
   top_k: 3
-  top_p: 0.95
 
 ingestion:
-  batch_size: 64
-  max_retries: 6
-  backoff_initial_seconds: 1.0
-  chunk_size: 1200
-  chunk_overlap: 150
-  include_product_description_for_embedding: true
-  limit: 100000
-  shuffle: false
+  batch_embed: 100
+  batch_insert: 200
+  max_tokens: 1300
+  min_tokens: 100
+  max_reviews_per_product: 5
+  min_review_length: 100
+  min_helpful_votes: 10
 
-
-
-
+graph:
+  max_retries: 2
