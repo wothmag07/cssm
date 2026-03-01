@@ -76,14 +76,18 @@ def grade_docs(state: RAGState) -> dict:
     return {"grade": grade}
 
 
-def generate(state: RAGState) -> dict:
-    """Generate answer using retrieved context with citations."""
-    docs = state.get("documents", [])
-    context = "\n\n".join(
+def _build_context(docs: list) -> str:
+    """Build context string from documents."""
+    return "\n\n".join(
         f"[{i+1}] (Product: {doc.metadata.get('product_name', 'Unknown')}, "
         f"Rating: {doc.metadata.get('rating', 'N/A')}) {doc.page_content}"
         for i, doc in enumerate(docs)
     )
+
+
+def generate(state: RAGState) -> dict:
+    """Generate answer using retrieved context with citations."""
+    context = _build_context(state.get("documents", []))
 
     prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATES["generate"])
     chain = prompt | _llm_instance | StrOutputParser()
@@ -95,6 +99,20 @@ def generate(state: RAGState) -> dict:
 
     logging.info(f"[generate] answer length: {len(answer)} chars")
     return {"answer": answer}
+
+
+def generate_stream(state: RAGState):
+    """Stream the generate step token by token."""
+    context = _build_context(state.get("documents", []))
+
+    prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATES["generate"])
+    chain = prompt | _llm_instance | StrOutputParser()
+
+    for chunk in chain.stream({
+        "context": context,
+        "question": state["question"],
+    }):
+        yield chunk
 
 
 def rewrite(state: RAGState) -> dict:
@@ -168,3 +186,24 @@ def build_graph(retriever: Retriever, model_loader: ModelLoader, max_retries: in
         f"(max_retries={max_retries})"
     )
     return graph
+
+
+def run_pre_generate(state: RAGState) -> RAGState:
+    """Run retrieve → grade → rewrite loop, stop before generate.
+
+    Returns the state ready for streaming generate.
+    """
+    max_retries = _max_retries
+    current = dict(state)
+
+    while True:
+        current.update(retrieve(current))
+        current.update(grade_docs(current))
+
+        route = route_after_grading(current)
+        if route == "generate":
+            return current
+        # rewrite and retry
+        current.update(rewrite(current))
+        if current.get("retries", 0) >= max_retries:
+            return current

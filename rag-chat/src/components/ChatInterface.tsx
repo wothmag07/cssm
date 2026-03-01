@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Sparkles, Zap, ChevronDown, ChevronUp, Star } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { playThinkingSound, playResponseSound } from '@/utils/sounds';
 
 interface Source {
@@ -71,24 +72,66 @@ export default function ChatInterface() {
 
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || `http://${window.location.hostname}:8001`;
-      const response = await fetch(`${baseUrl}/retrieve`, {
+      const response = await fetch(`${baseUrl}/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ msg: userMessage.content }),
       });
 
-      const data = await response.json();
+      if (!response.ok || !response.body) {
+        throw new Error('Stream failed');
+      }
 
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: data.response || 'Error: ' + (data.error || 'Unknown error'),
+      const botMessageId = (Date.now() + 1).toString();
+      const timestamp = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+      // Add empty bot message that will be filled by streaming
+      setMessages((prev) => [...prev, {
+        id: botMessageId,
+        content: '',
         sender: 'bot',
-        timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-        sources: data.sources || [],
-      };
+        timestamp,
+      }]);
 
-      setMessages((prev) => [...prev, botMessage]);
-      playResponseSound();
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const dataMatch = line.match(/^data: (.+)$/m);
+          if (!dataMatch) continue;
+
+          try {
+            const event = JSON.parse(dataMatch[1]);
+
+            if (event.type === 'sources') {
+              setMessages((prev) =>
+                prev.map((m) => m.id === botMessageId ? { ...m, sources: event.sources } : m)
+              );
+            } else if (event.type === 'token') {
+              setMessages((prev) =>
+                prev.map((m) => m.id === botMessageId ? { ...m, content: m.content + event.token } : m)
+              );
+            } else if (event.type === 'done') {
+              playResponseSound();
+            } else if (event.type === 'error') {
+              setMessages((prev) =>
+                prev.map((m) => m.id === botMessageId ? { ...m, content: 'Error: ' + event.error } : m)
+              );
+            }
+          } catch {
+            // skip malformed events
+          }
+        }
+      }
     } catch (error) {
       console.error('Error:', error);
       const errorMessage: Message = {
@@ -108,11 +151,22 @@ export default function ChatInterface() {
     inputRef.current?.focus();
   };
 
-  const formatContent = (text: string) => {
-    return text
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#e8e8e8] font-semibold">$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/\n/g, '<br>');
+  const markdownComponents = {
+    strong: ({ children }: { children?: React.ReactNode }) => (
+      <strong className="text-[#e8e8e8] font-semibold">{children}</strong>
+    ),
+    p: ({ children }: { children?: React.ReactNode }) => (
+      <p className="mb-2 last:mb-0">{children}</p>
+    ),
+    ul: ({ children }: { children?: React.ReactNode }) => (
+      <ul className="list-disc pl-4 mb-2">{children}</ul>
+    ),
+    ol: ({ children }: { children?: React.ReactNode }) => (
+      <ol className="list-decimal pl-4 mb-2">{children}</ol>
+    ),
+    li: ({ children }: { children?: React.ReactNode }) => (
+      <li className="mb-1">{children}</li>
+    ),
   };
 
   return (
@@ -221,10 +275,11 @@ export default function ChatInterface() {
                       : { background: '#141414', border: '1px solid #1e1e1e', color: '#d0d0d0' }
                   }
                 >
-                  <div
-                    className="text-[13px] leading-relaxed whitespace-pre-wrap break-words"
-                    dangerouslySetInnerHTML={{ __html: formatContent(message.content) }}
-                  />
+                  <div className="text-[13px] leading-relaxed break-words prose prose-invert prose-sm max-w-none">
+                    <ReactMarkdown components={markdownComponents}>
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
                   <div className="flex items-center justify-between mt-2">
                     <span
                       className="text-[10px]"

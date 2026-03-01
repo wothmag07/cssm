@@ -4,12 +4,15 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from dotenv import load_dotenv
+import json
+
 from fastapi import FastAPI, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.responses import StreamingResponse
 
 from config.config_loader import load_config
-from graph.rag_graph import build_graph
+from graph.rag_graph import build_graph, run_pre_generate, generate_stream
 from retriever.retrieval import Retriever
 from utils.model_loader import ModelLoader
 
@@ -101,6 +104,47 @@ async def chat(msg: str = Form(...)):
                 "error": "Sorry, I'm having trouble processing your request. Please try again.",
             },
         )
+
+
+@app.post("/stream")
+async def chat_stream(msg: str = Form(...)):
+    """Streaming chat endpoint — SSE for token-by-token response."""
+    query = msg.strip()
+
+    if not query:
+        return JSONResponse(status_code=400, content={"error": "Query cannot be empty."})
+    if len(query) > 1000:
+        return JSONResponse(status_code=400, content={"error": "Query too long. Maximum 1000 characters."})
+
+    def event_stream():
+        try:
+            # Run retrieve → grade → rewrite loop (non-streaming)
+            state = run_pre_generate({
+                "question": query,
+                "rewritten_query": "",
+                "documents": [],
+                "sources": [],
+                "grade": "",
+                "answer": "",
+                "retries": 0,
+            })
+
+            # Send sources as first SSE event
+            sources = state.get("sources", [])
+            yield f"data: {json.dumps({'type': 'sources', 'sources': sources})}\n\n"
+
+            # Stream the generate step token by token
+            for token in generate_stream(state):
+                yield f"data: {json.dumps({'type': 'token', 'token': token})}\n\n"
+
+            # Signal completion
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+        except Exception as e:
+            logging.error(f"Streaming error: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 if __name__ == "__main__":
