@@ -21,6 +21,12 @@ class Retriever:
         self.query_name = self.config["supabase"]["query_name"]
         self.top_k = self.config["retriever"].get("top_k", 8)
 
+        # Hybrid search settings
+        retriever_cfg = self.config.get("retriever", {})
+        self.hybrid_enabled = retriever_cfg.get("hybrid", False)
+        self.semantic_weight = retriever_cfg.get("semantic_weight", 0.7)
+        self.hybrid_rpc = self.config["supabase"].get("hybrid_query_name", "hybrid_search")
+
     @property
     def client(self):
         if self._client is None:
@@ -43,18 +49,30 @@ class Retriever:
         return resp.data[0].embedding
 
     def retrieve(self, query: str):
-        """Retrieve documents with similarity scores via Supabase RPC."""
+        """Retrieve documents via hybrid (vector + keyword) or vector-only search."""
         embedding = self._embed_query(query)
 
-        # Call the match_documents RPC function directly
-        result = self.client.rpc(
-            self.query_name,
-            {
-                "query_embedding": embedding,
-                "match_count": self.top_k,
-                "filter": {},
-            },
-        ).execute()
+        if self.hybrid_enabled:
+            result = self.client.rpc(
+                self.hybrid_rpc,
+                {
+                    "query_text": query,
+                    "query_embedding": embedding,
+                    "match_count": self.top_k,
+                    "semantic_weight": self.semantic_weight,
+                    "filter": {},
+                },
+            ).execute()
+            logging.info(f"[hybrid] weight={self.semantic_weight} | query: {query[:80]}")
+        else:
+            result = self.client.rpc(
+                self.query_name,
+                {
+                    "query_embedding": embedding,
+                    "match_count": self.top_k,
+                    "filter": {},
+                },
+            ).execute()
 
         docs_with_scores = []
         for row in result.data or []:

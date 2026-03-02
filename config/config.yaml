@@ -4,6 +4,7 @@ data:
 supabase:
   table_name: "chunks"
   query_name: "match_documents"
+  hybrid_query_name: "hybrid_search"
 
 embedding_model:
   provider: "openai"
@@ -17,6 +18,8 @@ llm_model:
 
 retriever:
   top_k: 3
+  hybrid: true
+  semantic_weight: 0.7    # 0.7 = 70% vector + 30% keyword
 
 ingestion:
   batch_embed: 100

@@ -4,6 +4,7 @@ uvicorn
 python-multipart
 python-dotenv
 pyyaml
+slowapi
 
 ## LangChain + LangGraph
 langchain

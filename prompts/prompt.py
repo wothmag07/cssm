@@ -9,6 +9,10 @@ RULES:
 - Be specific: mention product names, ratings, and reviewer observations.
 - Keep responses concise but informative (2-4 paragraphs).
 - End with a clear recommendation or comparison.
+- Use the CONVERSATION HISTORY for context about follow-up questions (e.g. "what about cheaper ones?" refers to the previous topic).
+
+CONVERSATION HISTORY:
+{chat_history}
 
 CONTEXT:
 {context}

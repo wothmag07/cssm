@@ -6,9 +6,12 @@ import uvicorn
 from dotenv import load_dotenv
 import json
 
-from fastapi import FastAPI, Form
+from fastapi import Depends, FastAPI, Form, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from starlette.responses import StreamingResponse
 
 from config.config_loader import load_config
@@ -17,6 +20,20 @@ from retriever.retrieval import Retriever
 from utils.model_loader import ModelLoader
 
 load_dotenv(override=True)
+
+# ── Rate limiter ──
+limiter = Limiter(key_func=get_remote_address)
+
+# ── API key auth ──
+_API_KEY = os.environ.get("API_KEY", "")
+
+
+async def verify_api_key(x_api_key: str = Header(default="")):
+    """Require X-API-Key header when API_KEY env var is set."""
+    if not _API_KEY:
+        return  # auth disabled in dev (no API_KEY set)
+    if x_api_key != _API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key.")
 
 # ── Globals (initialized once at startup) ──
 rag_graph = None
@@ -42,6 +59,16 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan,
 )
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"error": "Too many requests. Please wait a moment and try again."},
+    )
+
 
 # CORS
 allowed_origins = os.environ.get(
@@ -61,12 +88,12 @@ async def health_check():
     return {"status": "healthy", "service": "CSSM Product Assistant API", "version": "2.0.0"}
 
 
-@app.post("/retrieve")
-async def chat(msg: str = Form(...)):
+@app.post("/retrieve", dependencies=[Depends(verify_api_key)])
+@limiter.limit("10/minute")
+async def chat(request: Request, msg: str = Form(...), chat_history: str = Form("")):
     """Chat endpoint — runs the LangGraph RAG pipeline."""
     query = msg.strip()
 
-    # Input validation
     if not query:
         return JSONResponse(
             status_code=400,
@@ -87,6 +114,7 @@ async def chat(msg: str = Form(...)):
             "grade": "",
             "answer": "",
             "retries": 0,
+            "chat_history": chat_history or "No previous conversation.",
         })
 
         logging.info(f"Query: {query[:80]} | Answer length: {len(result.get('answer', ''))}")
@@ -106,10 +134,12 @@ async def chat(msg: str = Form(...)):
         )
 
 
-@app.post("/stream")
-async def chat_stream(msg: str = Form(...)):
+@app.post("/stream", dependencies=[Depends(verify_api_key)])
+@limiter.limit("10/minute")
+async def chat_stream(request: Request, msg: str = Form(...), chat_history: str = Form("")):
     """Streaming chat endpoint — SSE for token-by-token response."""
     query = msg.strip()
+    history = chat_history or "No previous conversation."
 
     if not query:
         return JSONResponse(status_code=400, content={"error": "Query cannot be empty."})
@@ -118,7 +148,6 @@ async def chat_stream(msg: str = Form(...)):
 
     def event_stream():
         try:
-            # Run retrieve → grade → rewrite loop (non-streaming)
             state = run_pre_generate({
                 "question": query,
                 "rewritten_query": "",
@@ -127,6 +156,7 @@ async def chat_stream(msg: str = Form(...)):
                 "grade": "",
                 "answer": "",
                 "retries": 0,
+                "chat_history": history,
             })
 
             # Send sources as first SSE event
@@ -152,5 +182,8 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s | %(levelname)s | %(message)s",
     )
-    logging.info("Starting API server at http://0.0.0.0:8001")
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    if os.environ.get("LANGCHAIN_TRACING_V2", "").lower() == "true":
+        logging.info("LangSmith tracing enabled (project: %s)", os.environ.get("LANGCHAIN_PROJECT", "default"))
+    port = int(os.environ.get("PORT", 8001))
+    logging.info("Starting API server at http://0.0.0.0:%d", port)
+    uvicorn.run(app, host="0.0.0.0", port=port)

@@ -70,12 +70,22 @@ export default function ChatInterface() {
     setIsLoading(true);
     playThinkingSound();
 
+    // Build chat history from last 6 messages (3 user + 3 bot)
+    const recentMessages = [...messages, userMessage].slice(-6);
+    const chatHistory = recentMessages
+      .map((m) => `${m.sender === 'user' ? 'User' : 'Assistant'}: ${m.content.slice(0, 200)}`)
+      .join('\n');
+
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || `http://${window.location.hostname}:8001`;
+      const headers: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded' };
+      if (process.env.NEXT_PUBLIC_API_KEY) {
+        headers['X-API-Key'] = process.env.NEXT_PUBLIC_API_KEY;
+      }
       const response = await fetch(`${baseUrl}/stream`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ msg: userMessage.content }),
+        headers,
+        body: new URLSearchParams({ msg: userMessage.content, chat_history: chatHistory }),
       });
 
       if (!response.ok || !response.body) {

@@ -27,6 +27,7 @@ class RAGState(TypedDict):
     grade: str     # "relevant" | "irrelevant"
     answer: str
     retries: int
+    chat_history: str  # formatted conversation history
 
 
 # ── Node functions ──
@@ -95,6 +96,7 @@ def generate(state: RAGState) -> dict:
     answer = chain.invoke({
         "context": context,
         "question": state["question"],
+        "chat_history": state.get("chat_history", "No previous conversation."),
     })
 
     logging.info(f"[generate] answer length: {len(answer)} chars")
@@ -111,6 +113,7 @@ def generate_stream(state: RAGState):
     for chunk in chain.stream({
         "context": context,
         "question": state["question"],
+        "chat_history": state.get("chat_history", "No previous conversation."),
     }):
         yield chunk
 
