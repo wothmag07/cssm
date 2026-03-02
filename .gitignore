@@ -16,7 +16,15 @@ build/
 .venv/
 rag-chat/node_modules
 rag-chat/.next
+rag-chat/.env.local
+rag-chat/.env.development.local
+rag-chat/.env.test.local
+rag-chat/.env.production.local
+rag-chat/public/
 
 # Data files (large, should not be committed)
 data/*.jsonl
 data/*.json
+
+
+railway.json
