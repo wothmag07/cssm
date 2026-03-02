@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+.next/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+
+# Env files (secrets)
+.env
+.env.local
+.env.production
+
+# Misc
+README.md

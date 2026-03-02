@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+env/
+.venv/
+
+# Data (large files — not needed at runtime)
+data/
+data_ingestion/
+notebooks/
+Industrial RAG Chatbot/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+docker-compose.yml
+Dockerfile
+
+# Docs & plans
+*.md
+images/
+static/
+templates/
+
+# Frontend (has its own Dockerfile)
+rag-chat/
+
+# Misc
+.env
+.env.local
+*.sql
+*.mmd
+test/
+test_embeddings.py
+dry_run.py
+uv.lock
+e_commerce_backend.egg-info/
